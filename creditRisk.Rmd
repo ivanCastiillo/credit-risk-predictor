@@ -1,0 +1,578 @@
+---
+title: "CreditRisk"
+output: pdf_document
+date: "2024-02-09"
+---
+
+## Cargar los datos
+```{r}
+dataNN <- read.table("german.data", header = FALSE, sep=" ")
+data <- read.table("german.data-numeric", header = FALSE)
+set.seed(123)
+```
+
+## Renombrar los títulos de las columnas
+```{r}
+newNamesNN <- c("Status", "Duration", "CreditHistory", "Purpose", "CreditAmount", "SavingsAccount", "Employment", "Rate", "StatusSex", "Guarantors", "Residence", "Property", "Age", "InstallmentPlans", "Housing", "CreditsNumber", "Job", "Maintenances", "Telephone", "Foreign", "Class")
+
+colnames(dataNN) <- newNamesNN
+```
+
+```{r}
+newNames <- c("Status", "Duration", "CreditHistory", "Purpose", "CreditAmount", "SavingsAccount", "Employment", "Rate", "StatusSex", "Guarantors", "Residence", "Property", "Age", "InstallmentPlans", "Housing", "CreditsNumber", "Job", "Maintenances", "Telephone", "Foreign", "Var0", "Var1", "Var2", "Var3", "Class")
+
+colnames(data) <- newNames
+```
+
+## Modificar los valores numéricos para que sean 0 o 1
+```{r}
+# Encontramos los índices donde los valores son 2
+indices <- which(dataNN$Class == 2)
+
+# Cambiamos los valores a 0
+dataNN$Class[indices] <- 0
+```
+
+```{r}
+# Encontramos los índices donde los valores son 2
+indices <- which(data$Class == 2)
+
+# Cambiamos los valores a 0
+data$Class[indices] <- 0
+```
+
+## Exploración de las características disponibles
+```{r}
+# Visualización general de los datos
+head(data)
+```
+
+```{r}
+# Revisión de la cantidad de registros y características presentes en el conjunto de datos
+dim(data)
+
+# Identificación de variables categóricas y numéricas
+str(data)
+
+# Análisis de valores faltantes en el conjunto de datos
+sum(is.na(data))
+
+# Gráfico de barras para variables categóricas
+barplot(table(dataNN$StatusSex), main = "Distribución de Género y Estado Civil", xlab = "Género y Estado Civil")
+barplot(table(dataNN$Property), main = "Distribución de Propiedades", xlab = "Propiedades")
+barplot(table(dataNN$Housing), main = "Distribución de Tipo de Viviendas", xlab = "Tipo de Vivienda")
+```
+
+# Análisis exploratorio
+## Estadísticas descriptivas y visualización de la distribución
+```{r}
+# Estadísticas descriptivas para variables numéricas
+summary(dataNN[, c("Age", "CreditAmount")])
+
+# Histogramas para variables numéricas
+hist(dataNN$Age, main = "Distribución Normalizada de Edades", xlab = "Edad")
+hist(dataNN$CreditAmount, main = "Distribución Normalizada de Cantidad de Crédito", xlab = "Crédito")
+
+# Gráficos de densidad para variables numéricas
+plot(density(dataNN$Age), main = "Densidad Normalizada de Edades", xlab = "Edad")
+plot(density(dataNN$CreditAmount), main = "Densidad Normalizada de Cantidad de Crédito", xlab = "Crédito")
+```
+
+## Análisis de variables categóricas
+```{r}
+# Gráficos de barras para variables categóricas
+barplot(table(dataNN$StatusSex), main = "Distribución de Género y Estado Civil", xlab = "Género y Estado Civil")
+barplot(table(dataNN$Property), main = "Distribución de Propiedades", xlab = "Propiedades")
+barplot(table(dataNN$Housing), main = "Distribución de Tipo de Viviendase", xlab = "Tipo de Vivienda")
+
+# Gráfico de barras apiladas para analizar la relación entre variables categóricas y la concesión
+barplot(table(dataNN$StatusSex, dataNN$Class),
+        main = "Relación entre Género y Estado Civil y la Concesión",
+        xlab = "Género y Estado Civil",
+        beside = TRUE,
+        legend = TRUE)
+
+barplot(table(dataNN$Property, dataNN$Class),
+        main = "Relación entre Propiedades y la Concesión",
+        xlab = "Propiedades",
+        beside = TRUE,
+        legend = TRUE)
+
+barplot(table(dataNN$Housing, dataNN$Class),
+        main = "Relación entre Tipo de vivienda y la Concesión",
+        xlab = "Tipo de vivienda",
+        beside = TRUE,
+        legend = TRUE)
+
+```
+
+## Matriz de correlación
+```{r}
+# Cálculo de la matriz de correlación
+correlation_matrix <- cor(data)
+
+# Visualización de la matriz de correlación en un mapa de calor
+install.packages("corrplot")
+library(corrplot)
+corrplot(correlation_matrix, method = "color")
+```
+
+## Correlaxión mediante chi^2
+```{r}
+# Cargar la librería 'dplyr' para manipulación de datos
+library(dplyr)
+
+# Crear una tabla de contingencia cruzando dos variables categóricas
+contingency_table <- table(dataNN$Purpose, dataNN$DurationP)
+
+# Realizar el test de Chi-cuadrado
+chi_square_result <- chisq.test(contingency_table)
+
+# Mostrar los resultados del test
+print(chi_square_result)
+
+```
+
+## Gráficos de cajas (Box Plots)
+```{r}
+# Gráfico de cajas para analizar la relación entre edad (Age) y la concesión (Class)
+boxplot(Age ~ Class,
+        data = dataNN,
+        main = "Relación entre Edad y la concesión",
+        xlab = "Concesión",
+        ylab = "Edad",
+        col = c("lightblue", "lightgreen"),
+        names = c("No concedido", "Concedido"))
+
+# Gráfico de cajas para analizar la relación entre la cantidad del crédito (CreditAmount) y la concesión (Class)
+boxplot(CreditAmount ~ Class,
+        data = dataNN,
+        main = "Relación entre la Cantidad de Crédito y la concesión",
+        xlab = "Concesión",
+        ylab = "Crédito",
+        col = c("lightblue", "lightgreen"),
+        names = c("No concedido", "Concedido"))
+
+```
+
+# Limpieza y tratamiento de los datos duplicados o erróneos
+## Detección y eliminación de los datos duplicados
+```{r}
+# Identificar y eliminar filas duplicadas
+dataNN <- dataNN[!duplicated(dataNN), ]
+data <- data[!duplicated(data), ]
+```
+
+## Verificación de datos erróneos
+```{r}
+# Realizar comprobaciones para verificar si hay datos erróneos (si es aplicable)
+# Por ejemplo, verificar si hay edades negativas o tarifas negativas, lo que podría ser incorrecto en el contexto del dataset.
+
+# Ejemplo:
+dataNN <- dataNN[dataNN$Age >= 0, ]
+data <- dataNN[data$Age >= 0, ]
+```
+
+# Codificación de variables categóricas y normalización de atributos numéricos
+## Normalización de atributos numéricos
+```{r}
+numericColumnsNN <- c("Duration", "CreditAmount", "Rate", "Residence", "Age", "CreditsNumber", "Maintenances")
+
+dataNN[, numericColumnsNN] <- scale(dataNN[, numericColumnsNN])
+```
+
+```{r}
+numericColumns <- c("Status", "Duration", "CreditHistory", "Purpose", "CreditAmount", "SavingsAccount", "Employment", "Rate", "StatusSex", "Guarantors", "Residence", "Property", "Age", "InstallmentPlans", "Housing", "CreditsNumber", "Job", "Maintenances", "Telephone", "Foreign", "Var0", "Var1", "Var2", "Var3")
+
+data[, numericColumns] <- scale(data[, numericColumns])
+```
+
+## Dividir el dataset (train y test, 70/30)
+```{r}
+#Fijar la proporción de la división
+trainProportion <- 0.7
+
+#Calcular los índices para la división
+trainIndex <- sample(1:nrow(data), nrow(data) * trainProportion)
+
+#División del dataset
+dataTrain <- data[trainIndex, ]
+dataTestSelected <- data[-trainIndex, ]
+dataTest <- subset(dataTestSelected, select = -Class)
+```
+
+# Identificación de las variables más relevantes para la predicción
+```{r}
+# Cargar la librería 'randomForest' para calcular la importancia de las variables
+if (!requireNamespace("randomForest", quietly = TRUE)) {
+  install.packages("randomForest")
+}
+
+library(randomForest)
+
+# Convertir la variable objetivo 'Class' a factor
+dataTrain$Class <- factor(dataTrain$Class)
+
+# Crear un modelo de bosque aleatorio con todas las variables
+rfModel <- randomForest(Class ~ ., data = dataTrain, ntree = 100, importance = TRUE)
+
+# Obtener la importancia de las variables
+varImportance <- importance(rfModel)
+
+# Ordenar las variables por importancia descendente
+sortedVarImportance <- varImportance[order(-varImportance[, "MeanDecreaseAccuracy"]), ]
+
+# Mostrar las variables más relevantes
+topVars <- head(sortedVarImportance, 5)
+topVars
+```
+
+# Implementación del modelo y ajuste de parámetros
+## Random Forest
+### Ajuste de hiperparámetros
+```{r}
+# Cargar de paquetes necesarios
+library(caret)
+library(randomForest)
+
+# Definimos los predictores y la variable objetivo
+predictors <- setdiff(names(dataTrain), "Class")
+
+# Nos aseguramos de que "Class" sea una variable categórica (factor)
+dataTrain$Class <- as.factor(dataTrain$Class)
+# dataTest$sex <- as.factor(dataTest$sex)
+dataTestSelected$Class <- as.factor(dataTestSelected$Class)
+
+# Definir la cuadrícula de parámetros a ajustar
+grid <- expand.grid(mtry = c(1, 2, 3, 4)) # número de variables para considerar en cada división
+
+# Ajustar el modelo utilizando la función tune() para optimizar los parámetros
+rf_fit <- train(Class ~ ., 
+                data = dataTrain, 
+                method = "rf", 
+                tuneGrid = grid, 
+                trControl = trainControl(method = "cv"))
+
+# Imprimir los mejores valores encontrados
+print(rf_fit$bestTune)
+
+# Random Forest
+# Evaluar el modelo con los datos de prueba
+predictions <- predict(rf_fit, newdata = dataTest)
+confMatrix <- confusionMatrix(predictions, dataTestSelected$Class)
+
+# Obtén la precisión y exactitud desde la matriz de confusión
+rfAccuracy <- confMatrix$overall["Accuracy"]
+rfPrecision <- confMatrix$byClass["Pos Pred Value"]
+
+# Mostramos las métricas
+print("Métricas para Ramdom Forest:")
+print(paste("Precisión:", rfPrecision))
+print(paste("Exactitud:", rfAccuracy))
+```
+
+###Sin ajuste de parámetros
+```{r}
+# Carga de paquetes necesarios
+library(caret)
+library(randomForest)
+library(ggplot2)
+
+# Definimos los predictores y la variable objetivo
+predictors <- setdiff(names(dataTrain), "Class")
+
+# Nos aseguramos de que "sex" sea una variable categórica (factor)
+dataTrain$Class <- as.factor(dataTrain$Class)
+# dataTest$sex <- as.factor(dataTest$sex)
+dataTestSelected$Class <- as.factor(dataTestSelected$Class)
+
+# Random Forest
+# Entrenamos el modelo Random Forest con los datos de entrenamiento
+rfModel <- randomForest(Class ~ ., data = dataTrain, ntree = 1500, mtry = 4)
+
+# Realizamos las predicciones en el conjunto de prueba
+rfPredictions <- predict(rfModel, newdata = dataTest)
+
+# Calculamos métricas de clasificación en el conjunto de prueba
+# confMatrix <- confusionMatrix(rfPredictions, dataTest$sex)
+confMatrix <- confusionMatrix(rfPredictions, dataTestSelected$Class)
+
+# Obtén la precisión y exactitud desde la matriz de confusión
+rfAccuracy <- confMatrix$overall["Accuracy"]
+rfPrecision <- confMatrix$byClass["Pos Pred Value"]
+
+# Mostramos las métricas
+print("Métricas para Ramdom Forest:")
+print(paste("Precisión:", rfPrecision))
+print(paste("Exactitud:", rfAccuracy))
+```
+
+## Regresión logística
+```{r}
+# Carga de paquetes necesarios
+library(caret)
+library(glmnet)
+
+# Asegurémonos de que "sex" sea una variable categórica (factor)
+dataTrain$Class <- as.factor(dataTrain$Class)
+dataTestSelected$Class <- as.factor(dataTestSelected$Class)
+
+# Verificar niveles de variables categóricas
+levels(dataTestSelected$Class) <- levels(dataTrain$Class)
+
+# Entrenar un modelo de regresión logística
+logisticModel <- glm(Class ~ ., data = dataTrain, family = "binomial", maxit = 1000)
+
+# Realizar predicciones en el conjunto de prueba
+logisticPredictions <- predict(logisticModel, newdata = dataTest, type = "response")
+
+# Convertir las probabilidades en clases (0 o 1)
+logisticPredictions <- factor(ifelse(logisticPredictions > 0.5, 1, 0), levels = levels(dataTestSelected$Class))
+
+# Nos aseguramos de que las variables categóricas tengan los mismos niveles en el conjunto de prueba
+for (var in c("nace_r2", "unit", "geo")) {
+  levels(dataTest[[var]]) <- union(levels(dataTrain[[var]]), levels(dataTest[[var]]))
+}
+
+# Crear un nuevo factor para la variable objetivo en el conjunto de prueba con los mismos niveles
+dataTest$ClassNew <- factor(dataTestSelected$Class, levels = levels(logisticPredictions))
+
+# Calculamos métricas de clasificación en el conjunto de prueba
+confMatrix <- confusionMatrix(logisticPredictions, dataTest$ClassNew)
+
+# Obtén la precisión y exactitud desde la matriz de confusión
+logisticAccuracy <- confMatrix$overall["Accuracy"]
+logisticPrecision <- confMatrix$byClass["Pos Pred Value"]
+
+# Mostramos las métricas para regresión logística
+print("Métricas para Regresión Logística:")
+print(paste("Precisión:", logisticPrecision))
+print(paste("Exactitud:", logisticAccuracy))
+```
+
+## Regresión logística con Ride regression
+```{r}
+# Cargar librerías
+library(glmnet)
+
+# Definir los predictores y la variable objetivo
+predictors <- setdiff(names(dataTrain), "Class")
+
+# Convertir los datos a formato matriz para glmnet
+x_train <- data.matrix(dataTrain[, predictors])
+y_train <- as.numeric(as.character(dataTrain$Class)) # Convertir factor a numérico
+
+# Entrenar el modelo de Regresión Logística Ridge con los datos de entrenamiento
+model_ridge <- cv.glmnet(x_train, y_train, alpha = 0)
+
+# Realizar predicciones en el conjunto de prueba
+x_test <- data.matrix(dataTest[, predictors])
+predictions_ridge <- predict(model_ridge, newx = x_test, s = "lambda.min", type = "response")
+
+# Convertir las probabilidades en etiquetas binarias (0 o 1) usando un umbral de decisión (por ejemplo, 0.5)
+predictions_ridge <- ifelse(predictions_ridge >= 0.5, 1, 0)
+
+# Agregar las predicciones como una nueva columna en dataTestSelected
+dataTest$ClassPredicted <- predictions_ridge
+
+# Calcular métricas de evaluación (Precisión y Exactitud)
+accuracy_ridge <- sum(predictions_ridge == dataTestSelected$Class) / length(dataTestSelected$Class)
+precision_ridge <- sum(predictions_ridge == dataTestSelected$Class & predictions_ridge == 1) / sum(predictions_ridge == 1)
+
+# Mostrar las métricas
+print("Métricas para Regresión Logística con Ridge Regression:")
+print(paste("Precisión (Ridge):", precision_ridge))
+print(paste("Exactitud (Ridge):", accuracy_ridge))
+```
+
+## Regresión logística con Lasso
+```{r}
+# Cargar librerías
+library(glmnet)
+
+# Definir los predictores y la variable objetivo
+predictors <- setdiff(names(dataTrain), "Class")
+
+# Convertir los datos a formato matriz para glmnet
+x_train <- data.matrix(dataTrain[, predictors])
+y_train <- as.numeric(as.character(dataTrain$Class)) # Convertir factor a numérico
+
+# Entrenar el modelo de Regresión Logística Lasso con los datos de entrenamiento
+model_lasso <- cv.glmnet(x_train, y_train, alpha = 1) # Usar alpha = 1 para Lasso
+
+# Obtener las variables seleccionadas por el modelo Lasso
+selected_vars <- coef(model_lasso, s = "lambda.min")[-1, ]
+selected_vars <- names(selected_vars[selected_vars != 0])
+
+# Filtrar el conjunto de datos con las variables seleccionadas
+dataTrain <- dataTrain[, c(selected_vars, "Class")]
+
+# Realizar predicciones en el conjunto de prueba
+x_test <- data.matrix(dataTest[, predictors])
+predictions_lasso <- predict(model_lasso, newx = x_test, s = "lambda.min", type = "response")
+
+# Convertir las probabilidades en etiquetas binarias (0 o 1) usando un umbral de decisión (por ejemplo, 0.5)
+predictions_lasso <- ifelse(predictions_lasso >= 0.5, 1, 0)
+
+# Calcular métricas de evaluación (Precisión y Exactitud)
+accuracy_lasso <- sum(predictions_lasso == dataTestSelected$Class) / length(dataTestSelected$Class)
+precision_lasso <- sum(predictions_lasso == dataTestSelected$Class & predictions_lasso == 1) / sum(predictions_lasso == 1)
+
+# Mostrar las métricas
+print("Métricas para Regresión Logística con Lasso Regression:")
+print(paste("Precisión (Lasso):", precision_lasso))
+print(paste("Exactitud (Lasso):", accuracy_lasso))
+
+# Mostrar las variables seleccionadas por el modelo Lasso
+print("Variables seleccionadas por Lasso:")
+print(selected_vars)
+```
+
+## Regresión logística con Elastic Net
+```{r}
+# Cargar librería
+library(glmnet)
+
+# Definir los predictores y la variable objetivo
+predictors <- setdiff(names(dataTrain), "Class")
+
+# Convertir las variables categóricas a factores
+dataTrain[, predictors] <- lapply(dataTrain[, predictors], as.factor)
+
+# Convertir las variables factores a numéricas
+dataTrain[, predictors] <- lapply(dataTrain[, predictors], as.numeric)
+
+# Crear la matriz x_train
+x_train <- as.matrix(dataTrain[, predictors])
+
+# Crear un vector numérico para la variable objetivo
+y_train <- as.numeric(levels(dataTrain$Class))[dataTrain$Class]
+
+# Entrenar el modelo de Elastic Net con regularización mediante validación cruzada
+model_elasticnet <- cv.glmnet(x_train, y_train, alpha = 0.5)
+
+# Obtener el valor óptimo de lambda mediante validación cruzada
+lambda_optimal <- model_elasticnet$lambda.min
+
+# Convertir las variables categóricas a factores
+dataTest[, predictors] <- lapply(dataTest[, predictors], as.factor)
+
+# Convertir las variables factores a numéricas
+dataTest[, predictors] <- lapply(dataTest[, predictors], as.numeric)
+
+# Crear la matriz x_test
+x_test <- as.matrix(dataTest[, predictors])
+
+predictions_elasticnet <- predict(model_elasticnet, s = lambda_optimal, newx = x_test, type = "response")
+
+# Convertir las probabilidades en etiquetas binarias (0 o 1) usando un umbral de decisión (por ejemplo, 0.5)
+predictions_elasticnet <- ifelse(predictions_elasticnet >= 0.5, 1, 0)
+
+# Calcular métricas de evaluación (Precisión y Exactitud)
+accuracy_elasticnet <- sum(predictions_elasticnet == dataTestSelected$Class) / nrow(dataTestSelected)
+precision_elasticnet <- sum(predictions_elasticnet == dataTestSelected$Class & predictions_elasticnet == 1) / sum(predictions_elasticnet == 1)
+
+# Mostrar las métricas
+print("Métricas para Regresión Logística con Elastic Net:")
+print(paste("Precisión (Elastic Net):", precision_elasticnet))
+print(paste("Exactitud (Elastic Net):", accuracy_elasticnet))
+```
+
+# Red neuronal
+```{r}
+# Cargar librería glmnet
+library(glmnet)
+
+# Cargar librería nnet
+library(nnet)
+
+# Cargar librería caret
+library(caret)
+
+# Cargar librería DALEX
+library(DALEX)
+
+# Cargar librería iml
+library(iml)
+
+# Definir los predictores y la variable objetivo
+predictors <- setdiff(names(dataTrain), "Class")
+
+# Convertir las variables categóricas a factores
+dataTrain[, predictors] <- lapply(dataTrain[, predictors], as.factor)
+
+# Convertir las variables factores a numéricas
+dataTrain[, predictors] <- lapply(dataTrain[, predictors], as.numeric)
+
+# Crear la matriz x_train
+x_train <- as.matrix(dataTrain[, predictors])
+
+# Crear un vector numérico para la variable objetivo
+y_train <- as.numeric(levels(dataTrain$Class))[dataTrain$Class]
+
+# Entrenar el modelo de Elastic Net con regularización mediante validación cruzada
+model_elasticnet <- cv.glmnet(x_train, y_train, alpha = 0.5)
+
+# Obtener el valor óptimo de lambda mediante validación cruzada
+lambda_optimal <- model_elasticnet$lambda.min
+
+# Crear un modelo de red neuronal
+model_neural <- multinom(Class ~ ., data = dataTrain)
+
+# Calcular importancia de variables usando caret
+set.seed(123)  # Fijar semilla para reproducibilidad
+importance <- varImp(model_neural, scale = FALSE)
+
+# Mostrar importancia de variables
+print(importance)
+
+# Realizar predicciones en el conjunto de prueba
+x_test <- dataTest[, predictors]
+predictions_neural <- predict(model_neural, newdata = x_test, type = "class")
+
+# Calcular métricas de evaluación (Precisión y Exactitud)
+accuracy_neural <- sum(predictions_neural == dataTestSelected$Class) / nrow(dataTestSelected)
+precision_neural <- sum(predictions_neural == dataTestSelected$Class & predictions_neural == 1) / sum(predictions_neural == 1)
+
+# Mostrar las métricas
+print("Métricas para Red Neuronal:")
+print(paste("Precisión (Neural Network):", precision_neural))
+print(paste("Exactitud (Neural Network):", accuracy_neural))
+```
+
+```{r}
+# Cargar librería nnet
+library(nnet)
+
+# Definir diferentes configuraciones y parámetros para la red neuronal
+sizes <- c(5, 10, 15)  # Diferentes tamaños de la capa oculta
+decays <- c(0.001, 0.01, 0.1)  # Diferentes tasas de decaimiento
+
+best_model <- NULL
+best_accuracy <- 0
+
+for (size in sizes) {
+  for (decay in decays) {
+    # Crear un modelo de red neuronal multinomial
+    model_neural <- multinom(Class ~ ., data = dataTrain)
+    
+    # Calcular métricas de evaluación (Precisión y Exactitud)
+    accuracy_neural <- sum(predictions_neural == dataTestSelected$Class) / nrow(dataTestSelected)
+    
+    # Comprobar si esta configuración es la mejor hasta ahora
+    if (accuracy_neural > best_accuracy) {
+      best_accuracy <- accuracy_neural
+      best_model <- model_neural
+    }
+    
+    # Imprimir métricas para esta configuración
+    print(paste("Configuración: Size =", size, ", Decay =", decay))
+    print(paste("Precisión (Neural Network):", precision_neural))
+    print(paste("Exactitud (Neural Network):", accuracy_neural))
+  }
+}
+
+# Imprimir la mejor configuración y modelo
+print("Mejor configuración:")
+print(best_model)
+```
